@@ -68,6 +68,22 @@ mvn clean verify
 This runs the full test suite and generates a JaCoCo coverage report at
 `target/site/jacoco/index.html`.
 
+## Playable game
+
+A standalone, single-file browser game that uses the same poker rules
+(hand evaluation, ace-low/ace-high straights, and the straight-flush/full-house
+bonus) is included:
+
+- Open `game/index.html` directly in any modern browser (no build step, no
+  network access, Web Audio sound).
+- Modes: **Deal & Evaluate**, **Player vs Dealer** showdown, and **Auto-play (AI)**
+  simulation with live hand-type distribution and bonus rate.
+- Run the JS logic tests against the Java test cases with:
+
+```bash
+node game/test.js
+```
+
 ## Test coverage
 
 The suite is fully green and reports **100% line, instruction, method,

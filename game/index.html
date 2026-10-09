@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Palace — Deal &amp; Win</title>
+<style>
+  :root{
+    --felt1:#0b4a2e; --felt2:#0a3d27; --felt3:#062b1c;
+    --gold:#ffd54a; --gold-dark:#c9a227; --cream:#f7f1e3;
+    --red:#c62828; --black:#1b1b1b; --glow:#7CFC00;
+    --panel:rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    color:var(--cream);
+    background:radial-gradient(ellipse at 50% -20%, var(--felt1), var(--felt2) 45%, var(--felt3) 100%);
+    min-height:100vh; overflow-x:hidden;
+  }
+  /* felt texture */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.5; z-index:0;
+    background-image:radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:22px 22px;
+  }
+  header{
+    position:relative; z-index:2; text-align:center; padding:18px 16px 6px;
+  }
+  header h1{
+    font-size:clamp(26px,5vw,44px); letter-spacing:2px; font-weight:800;
+    color:var(--gold); text-shadow:0 2px 0 rgba(0,0,0,.4), 0 0 22px rgba(255,213,74,.35);
+  }
+  header .sub{color:#cfe8d8; opacity:.85; margin-top:4px; font-size:clamp(12px,2vw,15px);}
+  .wrap{position:relative; z-index:2; max-width:1000px; margin:0 auto; padding:8px 14px 40px;}
+  /* mode tabs */
+  .tabs{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin:14px 0 18px;}
+  .tab{
+    flex:1 1 180px; max-width:250px; padding:12px 10px; border:1px solid var(--gold-dark);
+    background:linear-gradient(180deg,rgba(255,213,74,.16),rgba(255,213,74,.05));
+    color:var(--cream); border-radius:12px; cursor:pointer; font-weight:700;
+    font-size:15px; letter-spacing:.5px; transition:transform .12s, box-shadow .2s;
+  }
+  .tab:hover{transform:translateY(-2px);}
+  .tab.active{
+    background:linear-gradient(180deg,var(--gold),var(--gold-dark)); color:#2a1c00;
+    box-shadow:0 6px 20px rgba(255,213,74,.4);
+  }
+  /* cards */
+  .table{
+    position:relative; border-radius:22px; padding:26px 16px 30px;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.25));
+    border:3px solid var(--gold-dark); box-shadow:inset 0 0 40px rgba(0,0,0,.5), 0 10px 40px rgba(0,0,0,.4);
+    margin:0 auto; max-width:920px;
+  }
+  .table-label{
+    text-align:center; margin-bottom:10px; font-size:13px; letter-spacing:3px;
+    text-transform:uppercase; color:var(--gold); opacity:.9;
+  }
+  .hand{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; min-height:130px; align-items:center;}
+  .card{
+    width:88px; height:128px; border-radius:12px; position:relative;
+    background:linear-gradient(160deg,#fff,#f2f2f2); color:var(--black);
+    box-shadow:0 6px 14px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.12);
+    font-family:'Segoe UI',Arial,sans-serif; user-select:none;
+    transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+    transform-style:preserve-3d; cursor:default;
+  }
+  .card .corner{position:absolute; line-height:1; font-weight:800;}
+  .card .corner.tl{top:7px; left:8px; text-align:center;}
+  .card .corner.br{bottom:7px; right:8px; transform:rotate(180deg); text-align:center;}
+  .card .rank{font-size:20px;}
+  .card .suit{font-size:15px; margin-top:-1px;}
+  .card .pip{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:44px; opacity:.92;}
+  .card.red{color:var(--red);}
+  .card.black{color:var(--black);}
+  .card.face-down{
+    background:linear-gradient(150deg,#2a6df0,#1c4fb0);
+    border:3px solid #fff;
+  }
+  .card.face-down::after{
+    content:"🂠"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:46px; color:rgba(255,255,255,.9); text-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  .card.flip{animation:deal .5s ease both;}
+  @keyframes deal{0%{transform:translateY(-70px) scale(.7) rotateY(180deg); opacity:0;}60%{opacity:1;}100%{transform:none; opacity:1;}}
+  .card.win{box-shadow:0 0 0 3px var(--glow), 0 0 22px var(--glow);}
+  .card.lose{opacity:.75; filter:grayscale(.5);}
+  /* buttons */
+  .controls{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:20px;}
+  .btn{
+    padding:12px 22px; border:none; border-radius:12px; cursor:pointer;
+    font-size:15px; font-weight:800; letter-spacing:.5px; transition:transform .1s, box-shadow .2s;
+    color:#1c1500; background:linear-gradient(180deg,var(--gold),var(--gold-dark));
+    box-shadow:0 5px 14px rgba(0,0,0,.35);
+  }
+  .btn.secondary{background:linear-gradient(180deg,#66bb6a,#2e7d32); color:#fff;}
+  .btn.danger{background:linear-gradient(180deg,#ef5350,#c62828); color:#fff;}
+  .btn.small{padding:8px 14px; font-size:13px;}
+  .btn:disabled{opacity:.5; cursor:not-allowed; transform:none;}
+  .btn:hover:not(:disabled){transform:translateY(-2px);}
+  /* result banner */
+  .banner{
+    text-align:center; margin-top:18px; font-size:clamp(18px,3.5vw,26px); font-weight:800;
+    min-height:34px; letter-spacing:1px; text-shadow:0 2px 6px rgba(0,0,0,.5);
+  }
+  .banner.bonus{color:var(--glow); animation:pulse 1s infinite;}
+  .banner.win{color:var(--gold);}
+  .banner.lose{color:#ff9e9e;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+  /* stats */
+  .stats{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:18px;}
+  .stat{background:var(--panel); border:1px solid rgba(255,213,74,.3); border-radius:12px; padding:10px 16px; text-align:center; min-width:120px;}
+  .stat .k{font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:.75;}
+  .stat .v{font-size:22px; font-weight:800; color:var(--gold);}
+  /* showdown */
+  .row{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:6px;}
+  .col{flex:1 1 380px; max-width:440px;}
+  .player-head{text-align:center; margin-bottom:8px; font-size:15px; font-weight:700;}
+  .player-head .tag{display:inline-block; padding:2px 10px; border-radius:20px; font-size:12px; letter-spacing:1px;}
+  .player-head.player .tag{background:linear-gradient(180deg,#42a5f5,#1565c0);}
+  .player-head.dealer .tag{background:linear-gradient(180deg,#ff7043,#d84315);}
+  /* autoplay */
+  .autopanel{text-align:center; margin-top:8px;}
+  .speed{display:flex; gap:8px; justify-content:center; align-items:center; margin-top:12px; flex-wrap:wrap;}
+  .speed input{width:180px;}
+  .speed label{font-size:13px;}
+  /* footer */
+  footer{position:relative; z-index:2; text-align:center; font-size:12px; opacity:.6; padding:14px;}
+  /* toast */
+  #toast{
+    position:fixed; left:50%; bottom:20px; transform:translateX(-50%) translateY(30px);
+    background:rgba(0,0,0,.85); color:#fff; padding:10px 18px; border-radius:30px;
+    font-size:14px; opacity:0; transition:all .3s; z-index:99; pointer-events:none;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  @media (max-width:560px){
+    .card{width:70px; height:102px;}
+    .card .rank{font-size:16px;} .card .suit{font-size:13px;} .card .pip{font-size:34px;}
+    .card.face-down::after{font-size:36px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>♠ Poker Palace ♥</h1>
+  <div class="sub">Deal. Evaluate. Beat the house. — faithful to the CS3383 poker rules</div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs">
+    <button class="tab active" data-mode="deal">🎲 Deal &amp; Evaluate</button>
+    <button class="tab" data-mode="showdown">⚔️ Player vs Dealer</button>
+    <button class="tab" data-mode="autoplay">🤖 Auto-play (AI)</button>
+  </nav>
+
+  <!-- DEAL MODE -->
+  <section id="mode-deal" class="mode">
+    <div class="table">
+      <div class="table-label">Your Hand</div>
+      <div id="deal-hand" class="hand"></div>
+      <div id="deal-banner" class="banner"></div>
+      <div class="controls">
+        <button id="deal-btn" class="btn">Deal Cards</button>
+        <button id="deal-clear" class="btn secondary">Clear</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Bonus</div><div class="v" id="deal-bonus">—</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHOWDOWN MODE -->
+  <section id="mode-showdown" class="mode" style="display:none;">
+    <div class="table">
+      <div class="row">
+        <div class="col">
+          <div class="player-head player"><span class="tag">YOU</span> <span id="sd-you-label"></span></div>
+          <div id="sd-you-hand" class="hand"></div>
+          <div id="sd-you-banner" class="banner" style="font-size:16px;"></div>
+        </div>
+        <div class="col">
+          <div class="player-head dealer"><span class="tag">DEALER</span> <span id="sd-dealer-label"></span></div>
+          <div id="sd-dealer-hand" class="hand"></div>
+          <div id="sd-dealer-banner" class="banner" style="font-size:16px;"></div>
+        </div>
+      </div>
+      <div id="sd-result" class="banner"></div>
+      <div class="controls">
+        <button id="sd-deal" class="btn">Deal Showdown</button>
+        <button id="sd-reset" class="btn secondary small">Reset Score</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">You</div><div class="v" id="sd-you-score">0</div></div>
+        <div class="stat"><div class="k">Dealer</div><div class="v" id="sd-dealer-score">0</div></div>
+        <div class="stat"><div class="k">Draws</div><div class="v" id="sd-draws">0</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUTOPLAY MODE -->
+  <section id="mode-autoplay" class="mode" style="display:none;">
+    <div class="table">
+      <div class="table-label">Auto-play simulation</div>
+      <div id="ap-hand" class="hand"></div>
+      <div id="ap-banner" class="banner" style="font-size:18px;"></div>
+      <div class="controls">
+        <button id="ap-start" class="btn">▶ Start Auto-play</button>
+        <button id="ap-pause" class="btn secondary">Pause</button>
+        <button id="ap-reset" class="btn danger small">Reset Stats</button>
+      </div>
+      <div class="speed">
+        <label for="ap-speed">Speed</label>
+        <input type="range" id="ap-speed" min="1" max="10" value="4">
+        <span id="ap-speed-val">4×</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Hands</div><div class="v" id="ap-count">0</div></div>
+        <div class="stat"><div class="k">Bonus %</div><div class="v" id="ap-bonus">0</div></div>
+        <div class="stat"><div class="k">Best</div><div class="v" id="ap-best">—</div></div>
+      </div>
+      <div id="ap-dist"></div>
+    </div>
+  </section>
+</div>
+
+<footer>Standalone single-file game · Web Audio synthesized sound · Rules from <code>PokerHandEvaluator</code></footer>
+<div id="toast"></div>
+
+<script>
+// === POKER_LOGIC_BEGIN ===
+var Poker = (function () {
+  "use strict";
+  var SUITS = ["♣", "♦", "♥", "♠"];
+  var SUIT_NAMES = ["CLUBS", "DIAMONDS", "HEARTS", "SPADES"];
+  // Hand types, low to high (matches HandType.java)
+  var TYPES = ["HIGH_CARD","ONE_PAIR","TWO_PAIR","THREE_OF_A_KIND","STRAIGHT",
+               "FLUSH","FULL_HOUSE","FOUR_OF_A_KIND","STRAIGHT_FLUSH"];
+  var TYPE_RANK = {}; TYPES.forEach(function (t, i) { TYPE_RANK[t] = i; });
+  var RANK_NAME = {2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10",11:"J",12:"Q",13:"K",14:"A"};
+
+  function makeCard(rank, suitIndex) {
+    if (rank < 2 || rank > 14) throw new Error("rank must be between 2 and 14 (Ace): " + rank);
+    return { rank: rank, suit: suitIndex };
+  }
+
+  // Validate exactly 5 distinct cards
+  function validate(hand) {
+    if (!hand) throw new Error("hand must not be null");
+    if (hand.length !== 5) throw new Error("hand must contain exactly 5 cards, got " + hand.length);
+    var seen = new Set();
+    for (var i = 0; i < hand.length; i++) {
+      var c = hand[i];
+      var key = c.rank + ":" + c.suit;
+      if (seen.has(key)) throw new Error("hand must contain 5 distinct cards");
+      seen.add(key);
+    }
+    return hand;
+  }
+
+  function rankCounts(hand) {
+    var counts = {};
+    hand.forEach(function (c) { counts[c.rank] = (counts[c.rank] || 0) + 1; });
+    return counts;
+  }
+
+  function isAceLowStraight(ranks) {
+    return ranks[0] === 2 && ranks[1] === 3 && ranks[2] === 4 && ranks[3] === 5 && ranks[4] === 14;
+  }
+
+  function isConsecutive(ranks) {
+    for (var i = 1; i < ranks.length; i++) { if (ranks[i] !== ranks[i - 1] + 1) return false; }
+    return true;
+  }
+
+  function isStraight(hand) {
+    var ranks = validate(hand).map(function (c) { return c.rank; }).sort(function (a, b) { return a - b; });
+    if (isAceLowStraight(ranks)) return true;
+    return isConsecutive(ranks);
+  }
+
+  function isFlush(hand) {
+    var cards = validate(hand);
+    var suit = cards[0].suit;
+    for (var i = 1; i < cards.length; i++) { if (cards[i].suit !== suit) return false; }
+    return true;
+  }
+
+  function isFullHouse(hand) {
+    var counts = rankCounts(validate(hand));
+    return containsValue(counts, 3) && containsValue(counts, 2);
+  }
+
+  function containsValue(counts, n) {
+    for (var k in counts) { if (counts.hasOwnProperty(k) && counts[k] === n) return true; }
+    return false;
+  }
+
+  function classify(hand) {
+    var counts = rankCounts(validate(hand));
+    var straight = isStraight(hand);
+    var flush = isFlush(hand);
+    if (straight && flush) return "STRAIGHT_FLUSH";
+    if (containsValue(counts, 4)) return "FOUR_OF_A_KIND";
+    if (isFullHouse(hand)) return "FULL_HOUSE";
+    if (flush) return "FLUSH";
+    if (straight) return "STRAIGHT";
+    if (containsValue(counts, 3)) return "THREE_OF_A_KIND";
+    var pairCount = 0;
+    for (var k in counts) { if (counts.hasOwnProperty(k) && counts[k] === 2) pairCount++; }
+    if (pairCount === 2) return "TWO_PAIR";
+    if (pairCount === 1) return "ONE_PAIR";
+    return "HIGH_CARD";
+  }
+
+  // compareHands: returns 1 if a wins, -1 if b wins, 0 tie (based on hand type)
+  function compareHands(a, b) {
+    var ta = TYPE_RANK[classify(a)], tb = TYPE_RANK[classify(b)];
+    if (ta > tb) return 1;
+    if (ta < tb) return -1;
+    return 0;
+  }
+
+  // Full 52-card deck
+  function buildDeck() {
+    var deck = [];
+    for (var s = 0; s < 4; s++) for (var r = 2; r <= 14; r++) deck.push(makeCard(r, s));
+    return deck;
+  }
+
+  // Fisher-Yates shuffle
+  function shuffle(deck) {
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    return deck;
+  }
+
+  function dealHand() {
+    return shuffle(buildDeck()).slice(0, 5);
+  }
+
+  return {
+    SUITS: SUITS, SUIT_NAMES: SUIT_NAMES, TYPES: TYPES, TYPE_RANK: TYPE_RANK,
+    RANK_NAME: RANK_NAME, makeCard: makeCard, validate: validate,
+    isStraight: isStraight, isFlush: isFlush, isFullHouse: isFullHouse,
+    classify: classify, compareHands: compareHands, buildDeck: buildDeck,
+    shuffle: shuffle, dealHand: dealHand
+  };
+})();
+// === POKER_LOGIC_END ===
+
+// ---- Parsing helper for tests (mirrors Hands.java) ----
+function parseHand(text) {
+  var hand = [];
+  text.trim().split(/\s+/).forEach(function (token) {
+    var rankText = token.substring(0, token.length - 1);
+    var suitChar = token.charAt(token.length - 1);
+    var rank = rankText === "J" ? 11 : rankText === "Q" ? 12 : rankText === "K" ? 13 : rankText === "A" ? 14 : parseInt(rankText, 10);
+    var suit = { C: 0, D: 1, H: 2, S: 3 }[suitChar];
+    if (suit === undefined) throw new Error("bad token: " + token);
+    hand.push(Poker.makeCard(rank, suit));
+  });
+  return hand;
+}
+if (typeof module !== "undefined" && module.exports) { module.exports = Poker; }
+
+// ---- Audio engine (Web Audio synthesized) ----
+var AudioFX = (function () {
+  var ctx = null, muted = false;
+  function ensure() {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
+    if (ctx && ctx.state === "suspended") ctx.resume();
+  }
+  function tone(freq, dur, type, vol, when) {
+    if (muted || !ctx) return;
+    var t = ctx.currentTime + (when || 0);
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol || 0.2, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol, when) {
+    if (muted || !ctx) return;
+    var t = ctx.currentTime + (when || 0);
+    var buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    var src = ctx.createBufferSource(); src.buffer = buffer;
+    var g = ctx.createGain(); g.gain.value = vol || 0.25;
+    src.connect(g); g.connect(ctx.destination); src.start(t);
+  }
+  return {
+    unlock: function () { ensure(); },
+    flip: function () { ensure(); noise(0.06, 0.12); tone(880, 0.05, "square", 0.03); },
+    deal: function () { ensure(); for (var i = 0; i < 5; i++) { tone(500 + i * 60, 0.05, "triangle", 0.08, i * 0.07); } },
+    win: function () { ensure(); [523,659,784,1047].forEach(function (f, i) { tone(f, 0.14, "sine", 0.16, i * 0.09); }); },
+    lose: function () { ensure(); [330,262,196].forEach(function (f, i) { tone(f, 0.16, "sawtooth", 0.1, i * 0.12); }); },
+    bonus: function () { ensure(); [784,988,1175,1568].forEach(function (f, i) { tone(f, 0.18, "triangle", 0.14, i * 0.08); }); },
+    tick: function () { ensure(); tone(660, 0.04, "square", 0.05); },
+    toggle: function () { muted = !muted; return muted; },
+    isMuted: function () { return muted; }
+  };
+})();
+
+// ---- UI controller ----
+var UI = (function () {
+  var mode = "deal";
+  var sd = { you: 0, dealer: 0, draws: 0 };
+  var ap = { running: false, timer: null, count: 0, bonus: 0, best: 0, dist: {} };
+  var bonusRate = 0.1; // fallback for timer ms
+
+  function $(id) { return document.getElementById(id); }
+
+  function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
+
+  function cardHTML(card, faceDown) {
+    var d = el("div", "card flip" + (faceDown ? " face-down" : ""));
+    if (!faceDown) {
+      var red = (card.suit === 1 || card.suit === 2); // diamonds/hearts
+      d.classList.add(red ? "red" : "black");
+      var suitSym = Poker.SUITS[card.suit];
+      var rName = Poker.RANK_NAME[card.rank];
+      d.innerHTML =
+        '<div class="corner tl"><div class="rank">' + rName + '</div><div class="suit">' + suitSym + '</div></div>' +
+        '<div class="pip">' + suitSym + '</div>' +
+        '<div class="corner br"><div class="rank">' + rName + '</div><div class="suit">' + suitSym + '</div></div>';
+    }
+    return d;
+  }
+
+  function renderHand(container, hand, faceDown) {
+    container.innerHTML = "";
+    hand.forEach(function (c, i) {
+      var cd = cardHTML(c, faceDown);
+      cd.style.animationDelay = (i * 0.06) + "s";
+      container.appendChild(cd);
+    });
+  }
+
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 1800);
+  }
+
+  // ---- Mode tabs ----
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll(".tab").forEach(function (b) { b.classList.toggle("active", b.dataset.mode === m); });
+    document.querySelectorAll(".mode").forEach(function (s) { s.style.display = s.id === "mode-" + m ? "" : "none"; });
+    if (m !== "autoplay") stopAutoplay();
+  }
+  document.querySelectorAll(".tab").forEach(function (b) { b.addEventListener("click", function () { setMode(b.dataset.mode); }); });
+
+  // ---- Deal mode ----
+  $("deal-btn").addEventListener("click", function () {
+    AudioFX.unlock(); AudioFX.deal();
+    var hand = Poker.dealHand();
+    renderHand($("deal-hand"), hand, false);
+    var type = Poker.classify(hand);
+    var bonus = (type === "STRAIGHT_FLUSH" || type === "FULL_HOUSE");
+    var banner = $("deal-banner");
+    banner.className = "banner" + (bonus ? " bonus" : "");
+    banner.textContent = bonus ? "🎉 " + type + " — BONUS!" : "💼 " + type;
+    $("deal-bonus").textContent = bonus ? "YES ✓" : "No";
+    if (bonus) { AudioFX.bonus(); } else { AudioFX.tick(); }
+  });
+  $("deal-clear").addEventListener("click", function () {
+    $("deal-hand").innerHTML = ""; $("deal-banner").className = "banner"; $("deal-banner").textContent = "";
+    $("deal-bonus").textContent = "—";
+  });
+
+  // ---- Showdown mode ----
+  $("sd-deal").addEventListener("click", function () {
+    AudioFX.unlock(); AudioFX.deal();
+    var you = Poker.dealHand(), dealer = Poker.dealHand();
+    renderHand($("sd-you-hand"), you, false);
+    renderHand($("sd-dealer-hand"), dealer, false);
+    var yType = Poker.classify(you), dType = Poker.classify(dealer);
+    $("sd-you-label").textContent = yType;
+    $("sd-dealer-label").textContent = dType;
+    var res = Poker.compareHands(you, dealer);
+    var banner = $("sd-result");
+    var youBonus = (yType === "STRAIGHT_FLUSH" || yType === "FULL_HOUSE");
+    var dBonus = (dType === "STRAIGHT_FLUSH" || dType === "FULL_HOUSE");
+    if (res > 0) { sd.you++; banner.className = "banner win"; banner.textContent = "🏆 YOU WIN — " + yType + (youBonus ? " (+BONUS)" : ""); AudioFX.win(); }
+    else if (res < 0) { sd.dealer++; banner.className = "banner lose"; banner.textContent = "💀 DEALER WINS — " + dType + (dBonus ? " (+BONUS)" : ""); AudioFX.lose(); }
+    else { sd.draws++; banner.className = "banner"; banner.textContent = "🤝 DRAW — " + yType; AudioFX.tick(); }
+    $("sd-you-score").textContent = sd.you;
+    $("sd-dealer-score").textContent = sd.dealer;
+    $("sd-draws").textContent = sd.draws;
+  });
+  $("sd-reset").addEventListener("click", function () { sd.you = sd.dealer = sd.draws = 0; $("sd-you-score").textContent = "0"; $("sd-dealer-score").textContent = "0"; $("sd-draws").textContent = "0"; });
+
+  // ---- Autoplay mode ----
+  function stopAutoplay() { ap.running = false; if (ap.timer) { clearTimeout(ap.timer); ap.timer = null; } $("ap-start").textContent = "▶ Start Auto-play"; $("ap-start").disabled = false; }
+  function apStep() {
+    if (!ap.running) return;
+    var hand = Poker.dealHand();
+    renderHand($("ap-hand"), hand, false);
+    var type = Poker.classify(hand);
+    var tier = Poker.TYPE_RANK[type];
+    ap.count++;
+    if (type === "STRAIGHT_FLUSH" || type === "FULL_HOUSE") ap.bonus++;
+    if (tier > ap.best) ap.best = tier;
+    ap.dist[type] = (ap.dist[type] || 0) + 1;
+    $("ap-count").textContent = ap.count;
+    $("ap-bonus").textContent = (100 * ap.bonus / ap.count).toFixed(1) + "%";
+    $("ap-best").textContent = Poker.TYPES[ap.best];
+    renderDist();
+    AudioFX.tick();
+    var speed = parseInt($("ap-speed").value, 10);
+    var delay = Math.max(120, 900 - speed * 80);
+    ap.timer = setTimeout(apStep, delay);
+  }
+  function renderDist() {
+    var box = $("ap-dist"); box.innerHTML = "";
+    var tbl = el("table"); tbl.setAttribute("style", "margin:14px auto 0; border-collapse:collapse; font-size:13px;");
+    var head = el("tr");
+    ["Hand Type", "Count", "Freq %"].forEach(function (h) { var th = el("th"); th.textContent = h; th.setAttribute("style", "color:var(--gold); padding:3px 10px;"); head.appendChild(th); });
+    tbl.appendChild(head);
+    Poker.TYPES.slice().reverse().forEach(function (t) {
+      var n = ap.dist[t] || 0, f = ap.count ? (100 * n / ap.count).toFixed(1) : "0.0";
+      var tr = el("tr");
+      [t, String(n), f + "%"].forEach(function (v) { var td = el("td"); td.textContent = v; td.setAttribute("style", "padding:3px 10px; text-align:center;"); tr.appendChild(td); });
+      tbl.appendChild(tr);
+    });
+    box.appendChild(tbl);
+  }
+  $("ap-start").addEventListener("click", function () {
+    AudioFX.unlock();
+    if (ap.running) { stopAutoplay(); return; }
+    ap.running = true; $("ap-start").textContent = "⏸ Pause"; apStep();
+  });
+  $("ap-pause").addEventListener("click", function () { if (ap.running) stopAutoplay(); });
+  $("ap-reset").addEventListener("click", function () { stopAutoplay(); ap.count = 0; ap.bonus = 0; ap.best = 0; ap.dist = {}; $("ap-count").textContent = "0"; $("ap-bonus").textContent = "0"; $("ap-best").textContent = "—"; $("ap-hand").innerHTML = ""; renderDist(); });
+  $("ap-speed").addEventListener("input", function () { $("ap-speed-val").textContent = $("ap-speed").value + "×"; });
+
+  // Mute toggle (keyboard 'm')
+  document.addEventListener("keydown", function (e) { if (e.key === "m" || e.key === "M") { var m = AudioFX.toggle(); toast(m ? "🔇 Sound muted" : "🔊 Sound on"); } });
+  document.addEventListener("click", function () { AudioFX.unlock(); }, { once: false });
+
+  return { setMode: setMode, renderHand: renderHand };
+})();
+
+// expose parseHand for potential in-page console use
+window.parseHand = parseHand;
+</script>
+</body>
+</html>
