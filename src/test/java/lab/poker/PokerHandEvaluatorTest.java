@@ -39,6 +39,18 @@ class PokerHandEvaluatorTest {
     @Test void repeatedRanksAreNotStraight() {
         assertFalse(evaluator.isStraight(Hands.of("2C 3D 4H 5S 5C")));
     }
+    @Test void nearAceLowIsNotStraight() {
+        assertFalse(evaluator.isStraight(Hands.of("2C 3D 4H 5S 7C")));
+    }
+    @Test void straightNotStartingAtTwo() {
+        assertTrue(evaluator.isStraight(Hands.of("3C 4D 5H 6S 7C")));
+    }
+    @Test void aceLowCheckSecondRankFalse() {
+        assertFalse(evaluator.isStraight(Hands.of("2C 4D 5H 6S 7C")));
+    }
+    @Test void aceLowCheckFourthRankFalse() {
+        assertFalse(evaluator.isStraight(Hands.of("2C 3D 4H 8S AC")));
+    }
     @Test void doesNotReorderCallerList() {
         var hand = new ArrayList<>(Hands.of("6C 2D 5H 3S 4C"));
         var before = new ArrayList<>(hand);
@@ -52,5 +64,32 @@ class PokerHandEvaluatorTest {
     @Test void publicFullHouseHelperStillWorks() {
         assertTrue(evaluator.isFullHouse(Hands.of("7C 7D 7H 9S 9C")));
         assertFalse(evaluator.isFullHouse(Hands.of("7C 7D 7H 9S KC")));
+    }
+    @Test void nullHandRejected() {
+        assertThrows(IllegalArgumentException.class, () -> evaluator.classify(null));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isStraight(null));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFlush(null));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFullHouse(null));
+    }
+    @Test void tooFewCardsRejected() {
+        var shortHand = Hands.of("2C 3D 4H 5S");
+        assertThrows(IllegalArgumentException.class, () -> evaluator.classify(shortHand));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isStraight(shortHand));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFlush(shortHand));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFullHouse(shortHand));
+    }
+    @Test void tooManyCardsRejected() {
+        var longHand = Hands.of("2C 3D 4H 5S 6C 7H");
+        assertThrows(IllegalArgumentException.class, () -> evaluator.classify(longHand));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isStraight(longHand));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFlush(longHand));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFullHouse(longHand));
+    }
+    @Test void duplicateCardsRejected() {
+        var dupCards = Hands.of("2C 2C 3D 4H 5S");
+        assertThrows(IllegalArgumentException.class, () -> evaluator.classify(dupCards));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isStraight(dupCards));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFlush(dupCards));
+        assertThrows(IllegalArgumentException.class, () -> evaluator.isFullHouse(dupCards));
     }
 }
