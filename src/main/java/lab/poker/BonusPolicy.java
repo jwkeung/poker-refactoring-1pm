@@ -1,18 +1,15 @@
 package lab.poker;
 import java.util.List;
+import static lab.poker.HandType.FULL_HOUSE;
+import static lab.poker.HandType.STRAIGHT_FLUSH;
 
 /** House rule: a straight flush or a full house earns a bonus. */
 public class BonusPolicy {
     private final PokerHandEvaluator evaluator = new PokerHandEvaluator();
     public boolean qualifies(List<Card> hand) {
-        boolean a = evaluator.isStraight(hand);
-        boolean b = evaluator.isFlush(hand);
-        boolean c = evaluator.isFullHouse(hand);
-        return (a && b) || c;
-    }
-
-    // Kept from the earlier straight-flush-only bonus rule.
-    private boolean qualifiesOldRules(List<Card> hand) {
-        return evaluator.isStraight(hand) && evaluator.isFlush(hand);
+        return switch (evaluator.classify(hand)) {
+            case STRAIGHT_FLUSH, FULL_HOUSE -> true;
+            default -> false;
+        };
     }
 }
